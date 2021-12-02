@@ -387,7 +387,7 @@ while (<STDIN>) {
 # Flush buffered data if style active at end of input
 #
 if ($active_style) {
-  flush_pipeline($fh_buf, $style_cmd);
+  flush_pipeline($tpath, $style_cmd);
   close($fh_buf);
   $active_style = 0;
 }
