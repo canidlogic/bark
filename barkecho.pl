@@ -13,11 +13,12 @@ use File::Temp qw(tempdir);
 =head1 NAME
 
 barkecho.pl - Given a Bark-format MIME message, compile it into UTF-8
-text output.
+text output, or echo only text parts in a specific style.
 
 =head1 SYNOPSIS
 
   barkecho.pl < input.msg > output.txt
+  barkecho.pl -style exstyl < input.msg > output.parts
 
 =head1 DESCRIPTION
 
@@ -25,8 +26,19 @@ A Bark-format MIME message is read from standard input.  (See the
 documentation in the C<barkmime.pl> script for specifics of this MIME
 message format.)
 
-Each separate section of the MIME message is combined into a single text
-stream without the MIME container and then written to standard output.
+If no C<-style> option is specified, then each separate section of the
+MIME message is combined into a single text stream without the MIME
+container and then written to standard output.
+
+If a C<-style> option is specified, then the output will be a sequence
+of one or more sections.  Each section (including the first) is preceded
+by a separator line, and the last section has another separator line
+after it.  The separator line is the same as the footer line used in the
+MIME message.  Sections are included in the order they appear in the
+MIME message, but only sections with a matching style are output.  (If
+no sections have a matching style, the output is just the separator
+line.)  Use a style name with a single hyphen to match parts that have
+the default style.
 
 =cut
 
@@ -49,9 +61,29 @@ my $mime_dir = tempdir(CLEANUP => 1);
 binmode(STDOUT, ":encoding(utf8)") or
   die "Failed to change standard output to UTF-8, stopped";
 
-# Check that no parameters
+# Define variables for options
 #
-($#ARGV == -1) or die "Not expecting program arguments, stopped";
+my $has_style = 0;
+my $style_sel;
+
+# Parse parameters
+#
+for(my $i = 0; $i <= $#ARGV; $i++) {
+  if ($ARGV[$i] eq '-style') {
+    ($i < $#ARGV) or die "-style option requires parameter, stopped";
+    $i++;
+    
+    $has_style = 1;
+    $style_sel = $ARGV[$i];
+    
+    (($style_sel eq '-') or
+        ($style_sel =~ /^[A-Za-z0-9_]+$/u)) or
+      die "Invalid style name, stopped";
+    
+  } else {
+    die "Unrecognized option '$ARGV[$i]', stopped";
+  }
+}
 
 # Parse the MIME message from standard input
 #
@@ -64,6 +96,10 @@ my $ent = $parser->parse(\*STDIN);
 #
 ($ent->mime_type eq 'multipart/mixed') or
   die "MIME message in wrong format, stopped";
+
+# Make sure MIME message has at least one part
+#
+($ent->parts > 0) or die "MIME message is empty, stopped";
 
 # Process each part of the message
 #
@@ -117,10 +153,23 @@ for(my $i = 0; $i < $ent->parts; $i++) {
   (($style_name eq '-') or (not ($style_name =~ /\-/u))) or
     die "MIME part header has invalid style, stopped";
   
-  # If this is not the first part AND the join style is ":" then insert
-  # a line break to separate from previous section
-  if (($i > 0) and ($join_mode eq ':')) {
+  # If this is not the first part AND the join style is ":" AND we are
+  # not echoing a specific style then insert a line break to separate
+  # from previous section
+  if ((not $has_style) and ($i > 0) and ($join_mode eq ':')) {
     print "\n";
+  }
+  
+  # If we have a style but it does not match this section, close the
+  # part and move to next
+  if ($has_style and ($style_name ne $style_sel)) {
+    close($io);
+    next;
+  }
+  
+  # If we have a style and we got here, then echo the footer here
+  if ($has_style) {
+    print "$footer\n";
   }
   
   # Read and echo all lines until we hit the footer line
@@ -163,13 +212,23 @@ for(my $i = 0; $i < $ent->parts; $i++) {
       die "MIME part contains data after footer, stopped";
   }
   
+  # If we have a style, finish the section with a line break
+  if ($has_style) {
+    print "\n";
+  }
+  
   # Close the MIME part reader handle
   close($io);
 }
 
-# Final line break at the end
+# Final line break at the end unless we have a style, in which case
+# final footer line
 #
-print "\n";
+if ($has_style) {
+  print "$last_footer\n";
+} else {
+  print "\n";
+}
 
 # Purge disk files of the MIME parser
 #
