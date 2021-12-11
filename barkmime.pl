@@ -57,7 +57,7 @@ this to base-64 by adding the c<-base64> option to the command line.
 # temporary files when the script ends.
 #
 # The @ppaths array stores the paths to each temporary file part, in the
-# order they appear in the mssage.
+# order they appear in the message.
 #
 # The $ph handle is open for output to the last part in the array,
 # unless @ppaths is empty or at the end of the script when attaching all
