@@ -16,7 +16,7 @@ MIME message.
 
 =head1 SYNOPSIS
 
-  barkmime.pl -out out.msg < input.btf
+  barkmime.pl < input.btf > out.msg
 
 =head1 DESCRIPTION
 
@@ -126,31 +126,18 @@ binmode(STDIN, ":encoding(utf8)") or
 
 # Define variables to receive option values
 #
-my $has_path = 0;
-my $out_path;
 my $enc_mode = 'quoted-printable';
 
 # Interpret program arguments
 #
 for(my $i = 0; $i <= $#ARGV; $i++) {
-  if ($ARGV[$i] eq '-out') {
-    ($i < $#ARGV) or die "-out option requires parameter, stopped";
-    $i++;
-    
-    $has_path = 1;
-    $out_path = $ARGV[$i];
-    
-  } elsif ($ARGV[$i] eq '-base64') {
+  if ($ARGV[$i] eq '-base64') {
     $enc_mode = 'base64';
     
   } else {
     die "Unrecognized option '$ARGV[$i]', stopped";
   }
 }
-
-# Make sure we got the output path
-#
-($has_path) or die "-out option required, stopped";
 
 # Read the first line from input, which must be a signature line (with
 # optional UTF-8 BOM)
