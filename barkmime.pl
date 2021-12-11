@@ -22,9 +22,10 @@ MIME message.
 
 The Bark Text File is read from standard input.  It is packed into a
 MIME message with multipart/mixed format.  Each part is text/plain in
-UTF-8 encoding.  The body of each part begins with a header line, which
-is followed by zero or more content lines, and then a footer line,
-followed by zero or more blank or empty lines.
+UTF-8 encoding.  The body of each part begins with a footer line (so the
+actual footer can be detected), then a header line, then zero or more
+content lines, and then the footer line again, followed by zero or more
+blank or empty lines.
 
 The header line of each part begins with a colon or plus symbol.  Colon
 is used if there should be a line break after the last line of the
@@ -185,7 +186,7 @@ while (<STDIN>) {
       die "Invalid section command '$_', stopped";
     }
     
-    # Open a new part file and write the header line
+    # Open a new part file and write the footer and header line
     my $tpath;
     my $th;
     ($th, $tpath) = tempfile();
@@ -195,7 +196,7 @@ while (<STDIN>) {
     push @ppaths, ($tpath);
     $ph = $th;
     
-    print {$ph} ":$new_style\n";
+    print {$ph} "$footer:$new_style\n";
     
   } elsif (/^`\+/u) { # ------------------------------------------------
     # Join command; if the part array is not empty, write a footer line
@@ -217,7 +218,7 @@ while (<STDIN>) {
       die "Invalid join command '$_', stopped";
     }
     
-    # Open a new part file and write the header line
+    # Open a new part file and write the footer and header line
     my $tpath;
     my $th;
     ($th, $tpath) = tempfile();
@@ -227,7 +228,7 @@ while (<STDIN>) {
     push @ppaths, ($tpath);
     $ph = $th;
     
-    print {$ph} "+$new_style\n";
+    print {$ph} "$footer+$new_style\n";
   
   } elsif ((length($_) < 1) or (/^[^`]/u) or $is_escape) { # -----------
     # Data or escape line -- trim trailing line break if present
@@ -246,7 +247,7 @@ while (<STDIN>) {
     }
     
     # If no part files have been opened yet, open a part file and write
-    # a header line with default style
+    # a footer and header line with default style
     if ($#ppaths == -1) {
       my $tpath;
       my $th;
@@ -257,7 +258,7 @@ while (<STDIN>) {
       push @ppaths, ($tpath);
       $ph = $th;
       
-      print {$ph} ":-\n";
+      print {$ph} "$footer:-\n";
     }
     
     # Write the line to the currently opened part file
