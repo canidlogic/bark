@@ -246,6 +246,11 @@ while (<STDIN>) {
       $_ = substr($_, 1);
     }
     
+    # Make sure the line with a line break at the end is not exactly the
+    # same as the footer line
+    ("$_\n" ne $footer) or
+      die "Footer collision, stopped";
+    
     # If no part files have been opened yet, open a part file and write
     # a footer and header line with default style
     if ($#ppaths == -1) {
